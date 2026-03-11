@@ -49,15 +49,16 @@ parse_cli_args() {
     done
     
     # Export results for use by main script
-    export CLI_HOST_FLAGS=("${host_flags[@]}")
-    export CLI_CONTROL_FLAGS=("${control_flags[@]}")
+    # Use ${arr[@]+"${arr[@]}"} to avoid unbound variable with set -u on empty arrays
+    export CLI_HOST_FLAGS=(${host_flags[@]+"${host_flags[@]}"})
+    export CLI_CONTROL_FLAGS=(${control_flags[@]+"${control_flags[@]}"})
     export CLI_SCRIPT_COMMAND="$script_command"
-    export CLI_PASS_THROUGH=("${pass_through[@]}")
+    export CLI_PASS_THROUGH=(${pass_through[@]+"${pass_through[@]}"})
 }
 
 # Process host-only flags and set environment variables
 process_host_flags() {
-    for flag in "${CLI_HOST_FLAGS[@]}"; do
+    for flag in ${CLI_HOST_FLAGS[@]+"${CLI_HOST_FLAGS[@]}"}; do
         case "$flag" in
             --verbose)
                 export VERBOSE=true
@@ -126,10 +127,10 @@ requires_slot() {
 debug_parsed_args() {
     if [[ "${VERBOSE:-false}" == "true" ]]; then
         echo "[DEBUG] CLI Parser Results:" >&2
-        echo "[DEBUG]   Host flags: ${CLI_HOST_FLAGS[*]}" >&2
-        echo "[DEBUG]   Control flags: ${CLI_CONTROL_FLAGS[*]}" >&2
+        echo "[DEBUG]   Host flags: ${CLI_HOST_FLAGS[*]:-}" >&2
+        echo "[DEBUG]   Control flags: ${CLI_CONTROL_FLAGS[*]:-}" >&2
         echo "[DEBUG]   Script command: ${CLI_SCRIPT_COMMAND}" >&2
-        echo "[DEBUG]   Pass-through: ${CLI_PASS_THROUGH[*]}" >&2
+        echo "[DEBUG]   Pass-through: ${CLI_PASS_THROUGH[*]:-}" >&2
     fi
 }
 

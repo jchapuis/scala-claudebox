@@ -137,10 +137,10 @@ main() {
     # If command doesn't need Docker, skip all Docker setup
     if [[ "$cmd_requirements" == "none" ]]; then
         # Dispatch the command directly and exit
-        dispatch_command "${CLI_SCRIPT_COMMAND}" "${CLI_PASS_THROUGH[@]}" "${CLI_CONTROL_FLAGS[@]}"
+        dispatch_command "${CLI_SCRIPT_COMMAND}" ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"} ${CLI_CONTROL_FLAGS[@]+"${CLI_CONTROL_FLAGS[@]}"}
         exit $?
     fi
-    
+
     # Step 5: Docker checks
     local docker_status
     docker_status=$(check_docker; echo $?)
@@ -299,7 +299,7 @@ main() {
         local cmd_req=$(get_command_requirements "${CLI_SCRIPT_COMMAND}")
         # Only run pre-flight for commands that need Docker or image
         if [[ "$cmd_req" == "docker" ]] || [[ "$cmd_req" == "image" ]]; then
-            if ! preflight_check "${CLI_SCRIPT_COMMAND}" "${CLI_PASS_THROUGH[@]}"; then
+            if ! preflight_check "${CLI_SCRIPT_COMMAND}" ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"}; then
                 # Pre-flight check failed and printed error
                 exit 1
             fi
@@ -426,7 +426,7 @@ main() {
     if [[ -n "${CLI_SCRIPT_COMMAND}" ]]; then
         # Script command - dispatch on host
         # Pass control flags and pass-through args to dispatch_command
-        dispatch_command "${CLI_SCRIPT_COMMAND}" "${CLI_PASS_THROUGH[@]}" "${CLI_CONTROL_FLAGS[@]}"
+        dispatch_command "${CLI_SCRIPT_COMMAND}" ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"} ${CLI_CONTROL_FLAGS[@]+"${CLI_CONTROL_FLAGS[@]}"}
         exit $?
     else
         # No script command - running Claude interactively
@@ -472,7 +472,7 @@ main() {
             # Check if stdin is not a terminal (i.e., we're receiving piped input)
             # and -p/--print flag isn't already present
             local has_print_flag=false
-            for arg in "${CLI_PASS_THROUGH[@]}"; do
+            for arg in ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"}; do
                 if [[ "$arg" == "-p" ]] || [[ "$arg" == "--print" ]]; then
                     has_print_flag=true
                     break
@@ -495,9 +495,9 @@ main() {
                 fi
                 local piped_input
                 piped_input=$(cat)
-                run_claudebox_container "$container_name" "interactive" "${CLI_CONTROL_FLAGS[@]}" "-p" "$piped_input" "${CLI_PASS_THROUGH[@]}"
+                run_claudebox_container "$container_name" "interactive" ${CLI_CONTROL_FLAGS[@]+"${CLI_CONTROL_FLAGS[@]}"} "-p" "$piped_input" ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"}
             else
-                run_claudebox_container "$container_name" "interactive" "${CLI_CONTROL_FLAGS[@]}" "${CLI_PASS_THROUGH[@]}"
+                run_claudebox_container "$container_name" "interactive" ${CLI_CONTROL_FLAGS[@]+"${CLI_CONTROL_FLAGS[@]}"} ${CLI_PASS_THROUGH[@]+"${CLI_PASS_THROUGH[@]}"}
             fi
         else
             show_no_slots_menu
