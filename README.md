@@ -3,7 +3,7 @@
 [![Build & Publish](https://github.com/jchapuis/scala-claudebox/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/jchapuis/scala-claudebox/actions/workflows/docker-publish.yml)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A Docker image for running [Claude Code](https://claude.ai/code) in Scala projects. Based on [claudebox](https://github.com/RchGrav/claudebox), with a pre-configured Scala toolchain, Metals MCP server, and host MCP bridging.
+A fork of [claudebox](https://github.com/RchGrav/claudebox) that adds a Scala development profile. Run Claude Code in an isolated Docker container with JDK 21, sbt, Metals MCP, and your host MCP servers bridged in.
 
 ## What's included
 
@@ -17,9 +17,73 @@ A Docker image for running [Claude Code](https://claude.ai/code) in Scala projec
 | scalafix | latest | Via Coursier |
 | Node.js, git, Python/uv, zsh, tmux, gh, delta | from claudebox base | |
 
-## Quick start
+## Installation
 
-Pull the image and run it in your Scala project directory:
+Clone this repo and create a symlink to the CLI:
+
+```bash
+git clone https://github.com/jchapuis/scala-claudebox.git
+cd scala-claudebox
+
+# Option A: symlink to ~/.local/bin (make sure it's in your PATH)
+mkdir -p ~/.local/bin
+ln -sf "$PWD/main.sh" ~/.local/bin/claudebox
+
+# Option B: build the self-extracting installer
+bash .builder/build.sh
+./dist/claudebox.run
+```
+
+## Usage
+
+`cd` into your Scala project and use the claudebox CLI:
+
+```bash
+cd ~/projects/my-scala-app
+
+# First time: add the scala profile
+claudebox profile scala
+
+# Launch Claude Code
+claudebox
+```
+
+That's it. The CLI builds the Docker image (with caching), mounts your project as `/workspace`, starts Metals MCP on the workspace, and drops you into Claude Code.
+
+### Passing arguments to Claude Code
+
+```bash
+# Continue a previous conversation
+claudebox -c
+
+# Use a specific model
+claudebox --model opus
+
+# Save default flags so you don't type them every time
+claudebox save --disable-firewall
+```
+
+### Host MCP server bridging
+
+MCP servers configured on your host (`~/.claude.json`) are automatically passed through to the container. To also bridge the [Kapture](https://github.com/nichochar/kapture) browser extension:
+
+```bash
+# Auto-detect Kapture SSE port and pass it in
+KAPTURE_PORT=$(scripts/kapture-detect.sh 2>/dev/null || true) claudebox
+```
+
+Your host Claude Code skills, commands, plugins, and settings are mounted into the container automatically.
+
+### Shell access
+
+```bash
+# Open a zsh shell in the container (without starting Claude Code)
+claudebox shell
+```
+
+## Alternative: use the pre-built Docker image directly
+
+If you prefer not to install the CLI, a pre-built image is published on each push to main:
 
 ```bash
 docker run -it --rm \
@@ -28,16 +92,9 @@ docker run -it --rm \
   ghcr.io/jchapuis/scala-claudebox:latest
 ```
 
-Claude Code starts interactively with Metals MCP already connected to `/workspace`.
-
-## Full usage with host config and MCP bridging
-
-To get the full experience (your host skills, commands, plugins, settings, Kapture browser access):
+For the full experience with host config, MCP bridging, and Kapture:
 
 ```bash
-# Auto-detect Kapture SSE port (if Chrome extension is running)
-KAPTURE_PORT=$(bash scripts/kapture-detect.sh 2>/dev/null || true)
-
 docker run -it --rm \
   --add-host=host.docker.internal:host-gateway \
   -v "$PWD:/workspace" \
@@ -51,18 +108,6 @@ docker run -it --rm \
   -e ANTHROPIC_API_KEY \
   -e KAPTURE_PORT \
   ghcr.io/jchapuis/scala-claudebox:latest
-```
-
-### With the claudebox CLI (recommended)
-
-If you have the claudebox CLI installed, the Scala profile handles all of this automatically:
-
-```bash
-# Add the scala profile to your project
-./main.sh profile scala
-
-# Launch (Kapture auto-detected, host config mounted)
-KAPTURE_PORT=$(scripts/kapture-detect.sh 2>/dev/null || true) ./main.sh
 ```
 
 ## Environment variables
@@ -84,22 +129,15 @@ KAPTURE_PORT=$(scripts/kapture-detect.sh 2>/dev/null || true) ./main.sh
 | **kapture** | SSE | Host, bridged via `host.docker.internal` | Set `KAPTURE_PORT` env var |
 | **context7, serena, sequential-thinking** | stdio | Host `~/.claude.json` passthrough | Configure on host, claudebox passes through |
 
-## Building locally
+## Building the image locally
 
 ```bash
-# Build the image
 bash scripts/build-scala.sh claudebox-scala:local
-
-# Test it
-docker run -it --rm \
-  -v "$PWD:/workspace" \
-  -e ANTHROPIC_API_KEY \
-  claudebox-scala:local
 ```
 
 ## Upstream claudebox documentation
 
-This fork includes all upstream claudebox features. See below for the full upstream docs.
+This fork includes all upstream claudebox features (profiles, multi-instance, firewall, tmux, etc.). See below for details.
 
 ---
 
