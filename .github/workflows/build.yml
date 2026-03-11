@@ -1,14 +1,7 @@
 name: Build & Test Installer
 
 on:
-  push:
-    branches: [refactor, main]
-    tags:
-      - 'v*'
-  pull_request:
-    branches: [refactor, main]
-  release:
-    types: [created, published]
+  workflow_dispatch:
 
 jobs:
   test-installer:

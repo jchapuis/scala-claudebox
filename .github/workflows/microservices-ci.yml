@@ -1,17 +1,7 @@
 name: Microservices CI/CD Pipeline
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'services/**'
-      - 'docker-compose*.yml'
-      - '.github/workflows/microservices-ci.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'services/**'
-      - 'docker-compose*.yml'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
