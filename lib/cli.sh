@@ -20,18 +20,18 @@ readonly SCRIPT_COMMANDS=(shell create slot slots revoke profiles projects profi
 #   pass_through: Array of args to pass to Claude in container
 # Note: Each argument goes into exactly ONE bucket - no duplication
 parse_cli_args() {
-    local all_args=("$@")
-    
+    local all_args=(${@+"$@"})
+
     # Initialize bucket arrays
     host_flags=()
     control_flags=()
     script_command=""
     pass_through=()
-    
+
     # Single parsing loop - each arg goes into exactly ONE bucket
     local found_script_command=false
-    
-    for arg in "${all_args[@]}"; do
+
+    for arg in ${all_args[@]+"${all_args[@]}"}; do
         if [[ " ${HOST_ONLY_FLAGS[*]} " == *" $arg "* ]]; then
             # Bucket 1: Host-only flags
             host_flags+=("$arg")
