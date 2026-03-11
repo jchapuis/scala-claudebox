@@ -328,23 +328,22 @@ else
 
             cd /workspace
 
-            # Start Metals MCP server if scala profile is active and metals-mcp is available
+            # Start Metals MCP server (HTTP transport - background process)
             if [[ "${ENABLE_METALS:-true}" == "true" ]] && command -v metals-mcp &>/dev/null; then
                 METALS_PORT="${METALS_PORT:-7101}"
-                printf "[scala-claudebox] Starting metals-mcp on port %s...\n" "$METALS_PORT" >&2
-                metals-mcp --workspace /workspace --port "$METALS_PORT" &>/dev/null &
-
-                # Wait for metals to be ready (up to 15s)
-                for i in $(seq 1 15); do
-                    if curl -sf "http://localhost:${METALS_PORT}/mcp" -o /dev/null 2>&1; then
+                metals-mcp --workspace /workspace --transport http --port "$METALS_PORT" \
+                    --default-bsp-to-build-tool &>/tmp/metals-mcp.log &
+                METALS_PID=$!
+                # Wait for metals-mcp to be ready (up to 30s)
+                for i in $(seq 1 60); do
+                    if bash -c "echo > /dev/tcp/localhost/${METALS_PORT}" 2>/dev/null; then
+                        claude mcp add -s user -t http metals \
+                            "http://localhost:${METALS_PORT}/mcp" 2>/dev/null || true
+                        printf "[scala-claudebox] metals-mcp started (HTTP on port %s, pid %s).\n" "$METALS_PORT" "$METALS_PID" >&2
                         break
                     fi
-                    sleep 1
+                    sleep 0.5
                 done
-
-                # Register metals MCP with claude
-                claude mcp add -s user -t http metals "http://localhost:${METALS_PORT}/mcp" 2>/dev/null || true
-                printf "[scala-claudebox] metals-mcp registered.\n" >&2
             fi
 
             # Register Kapture MCP if SSE port is provided (bridged from host)

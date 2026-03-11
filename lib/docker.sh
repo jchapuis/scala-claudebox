@@ -261,10 +261,15 @@ run_claudebox_container() {
     fi
 
     # Pass Kapture and Metals environment variables
-    [[ -n "${KAPTURE_PORT:-}" ]] && docker_args+=(-e "KAPTURE_PORT=$KAPTURE_PORT")
-    [[ -n "${METALS_PORT:-}" ]] && docker_args+=(-e "METALS_PORT=$METALS_PORT")
-    [[ -n "${ENABLE_METALS:-}" ]] && docker_args+=(-e "ENABLE_METALS=$ENABLE_METALS")
-    [[ -n "${ENABLE_KAPTURE:-}" ]] && docker_args+=(-e "ENABLE_KAPTURE=$ENABLE_KAPTURE")
+    if [[ -n "${KAPTURE_PORT:-}" ]]; then
+        docker_args+=(-e "KAPTURE_PORT=$KAPTURE_PORT")
+    fi
+    if [[ -n "${ENABLE_METALS:-}" ]]; then
+        docker_args+=(-e "ENABLE_METALS=$ENABLE_METALS")
+    fi
+    if [[ -n "${ENABLE_KAPTURE:-}" ]]; then
+        docker_args+=(-e "ENABLE_KAPTURE=$ENABLE_KAPTURE")
+    fi
 
     # Add host.docker.internal for MCP server bridging (Linux)
     docker_args+=(--add-host=host.docker.internal:host-gateway)

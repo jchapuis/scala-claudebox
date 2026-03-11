@@ -400,7 +400,7 @@ RUN ARCH=$(uname -m) && \
       curl -fL "https://github.com/coursier/coursier/releases/latest/download/coursier" -o /tmp/cs && chmod +x /tmp/cs; \
     fi && \
     /tmp/cs setup --yes --install-dir "$HOME/.local/share/coursier/bin" \
-      --apps metals,scalafmt,scalafix 2>/dev/null && \
+      --apps metals,metals-mcp,scalafmt,scalafix 2>/dev/null && \
     rm -f /tmp/cs
 
 # sbt warmup: pre-download launcher + Scala 3 compiler
