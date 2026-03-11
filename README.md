@@ -1,231 +1,109 @@
-# ClaudeBox 🐳
+# scala-claudebox
 
-[![Docker](https://img.shields.io/badge/Docker-Required-blue.svg)](https://www.docker.com/)
+[![Build & Publish](https://github.com/jchapuis/scala-claudebox/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/jchapuis/scala-claudebox/actions/workflows/docker-publish.yml)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-RchGrav%2Fclaudebox-blue.svg)](https://github.com/RchGrav/claudebox)
 
-The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding assistant in a fully containerized, reproducible environment with pre-configured development profiles and MCP servers.
+A Docker image for running [Claude Code](https://claude.ai/code) in Scala projects. Based on [claudebox](https://github.com/RchGrav/claudebox), with a pre-configured Scala toolchain, Metals MCP server, and host MCP bridging.
 
-```
- ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗
-██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝
-██║     ██║     ███████║██║   ██║██║  ██║█████╗
-██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝
-╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗
- ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
+## What's included
 
-██████╗  ██████╗ ██╗  ██╗
-██╔══██╗██╔═══██╗╚██╗██╔╝
-██████╔╝██║   ██║ ╚███╔╝ 
-██╔══██╗██║   ██║ ██╔██╗ 
-██████╔╝╚██████╔╝██╔╝ ██╗
-╚═════╝  ╚═════╝ ╚═╝  ╚═╝
-```
+| Component | Version | Notes |
+|-----------|---------|-------|
+| JDK | 21 (Eclipse Temurin) | Via Adoptium apt repo |
+| sbt | 1.10.7 | Pre-warmed with Scala 3.6.4 compiler |
+| Coursier | latest | Native on x86_64, JVM launcher on ARM64 |
+| Metals MCP | 1.6.6 | Started automatically as HTTP background process |
+| scalafmt | latest | Via Coursier |
+| scalafix | latest | Via Coursier |
+| Node.js, git, Python/uv, zsh, tmux, gh, delta | from claudebox base | |
 
-## 🚀 What's New in Latest Update
+## Quick start
 
-- **Enhanced UI/UX**: Improved menu alignment and comprehensive info display
-- **New `profiles` Command**: Quick listing of all available profiles with descriptions
-- **Firewall Management**: New `allowlist` command to view/edit network allowlists
-- **Per-Project Isolation**: Separate Docker images, auth state, history, and configs
-- **Improved Clean Menu**: Clear descriptions showing exact paths that will be removed
-- **Profile Management Menu**: Interactive profile command with status and examples
-- **Persistent Project Data**: Auth state, shell history, and tool configs preserved
-- **Smart Profile Dependencies**: Automatic dependency resolution (e.g., C includes build-tools)
-
-## ✨ Features
-
-- **Containerized Environment**: Run Claude Code in an isolated Docker container
-- **Development Profiles**: Pre-configured language stacks (C/C++, Python, Rust, Go, etc.)
-- **Project Isolation**: Complete separation of images, settings, and data between projects
-- **Persistent Configuration**: Settings and data persist between sessions
-- **Multi-Instance Support**: Work on multiple projects simultaneously
-- **Package Management**: Easy installation of additional development tools
-- **Auto-Setup**: Handles Docker installation and configuration automatically
-- **Security Features**: Network isolation with project-specific firewall allowlists
-- **Developer Experience**: GitHub CLI, Delta, fzf, and zsh with oh-my-zsh powerline
-- **Python Virtual Environments**: Automatic per-project venv creation with uv
-- **Cross-Platform**: Works on Ubuntu, Debian, Fedora, Arch, and more
-- **Shell Experience**: Powerline zsh with syntax highlighting and autosuggestions
-- **Tmux Integration**: Seamless tmux socket mounting for multi-pane workflows
-
-## 📋 Prerequisites
-
-- Linux or macOS (WSL2 for Windows)
-- Bash shell
-- Docker (will be installed automatically if missing)
-
-## 🛠️ Installation
-
-ClaudeBox v2.0.0 offers two installation methods:
-
-### Method 1: Self-Extracting Installer (Recommended)
-
-The self-extracting installer is ideal for automated setups and quick installation:
+Pull the image and run it in your Scala project directory:
 
 ```bash
-# Download the latest release
-wget https://github.com/RchGrav/claudebox/releases/latest/download/claudebox.run
-chmod +x claudebox.run
-./claudebox.run
+docker run -it --rm \
+  -v "$PWD:/workspace" \
+  -e ANTHROPIC_API_KEY \
+  ghcr.io/jchapuis/scala-claudebox:latest
 ```
 
-This will:
-- Extract ClaudeBox to `~/.claudebox/source/`
-- Create a symlink at `~/.local/bin/claudebox` (you may need to add `~/.local/bin` to your PATH)
-- Show setup instructions if PATH configuration is needed
+Claude Code starts interactively with Metals MCP already connected to `/workspace`.
 
-### Method 2: Archive Installation
+## Full usage with host config and MCP bridging
 
-For manual installation or custom locations, use the archive:
+To get the full experience (your host skills, commands, plugins, settings, Kapture browser access):
 
 ```bash
-# Download the archive
-wget https://github.com/RchGrav/claudebox/releases/latest/download/claudebox-2.0.0.tar.gz
+# Auto-detect Kapture SSE port (if Chrome extension is running)
+KAPTURE_PORT=$(bash scripts/kapture-detect.sh 2>/dev/null || true)
 
-# Extract to your preferred location
-mkdir -p ~/my-tools/claudebox
-tar -xzf claudebox-2.0.0.tar.gz -C ~/my-tools/claudebox
-
-# Run main.sh to create symlink
-cd ~/my-tools/claudebox
-./main.sh
-
-# Or create your own symlink
-ln -s ~/my-tools/claudebox/main.sh ~/.local/bin/claudebox
+docker run -it --rm \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$PWD:/workspace" \
+  -v "$HOME/.claude/skills:/home/claude/.claudebox/skills:ro" \
+  -v "$HOME/.claude/commands:/home/claude/.claudebox/commands:ro" \
+  -v "$HOME/.claude/plugins:/home/claude/.claudebox/plugins:ro" \
+  -v "$HOME/.claude/settings.json:/home/claude/.claudebox/host-settings.json:ro" \
+  -v "$HOME/.claude/config.json:/home/claude/.claudebox/host-config.json:ro" \
+  -v "$HOME/.gitconfig:/home/claude/.gitconfig:ro" \
+  -v "$HOME/.ssh:/home/claude/.ssh:ro" \
+  -e ANTHROPIC_API_KEY \
+  -e KAPTURE_PORT \
+  ghcr.io/jchapuis/scala-claudebox:latest
 ```
 
-### Development Installation
+### With the claudebox CLI (recommended)
 
-For development or testing the latest changes:
-```bash
-# Clone the repository
-git clone https://github.com/RchGrav/claudebox.git
-cd claudebox
-
-# Build the installer
-bash .builder/build.sh
-
-# Run the installer
-./claudebox.run
-```
-
-### PATH Configuration
-
-If `claudebox` command is not found after installation, add `~/.local/bin` to your PATH:
+If you have the claudebox CLI installed, the Scala profile handles all of this automatically:
 
 ```bash
-# For Bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+# Add the scala profile to your project
+./main.sh profile scala
 
-# For Zsh (macOS default)
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+# Launch (Kapture auto-detected, host config mounted)
+KAPTURE_PORT=$(scripts/kapture-detect.sh 2>/dev/null || true) ./main.sh
 ```
 
-The installer will:
-- ✅ Extract ClaudeBox to `~/.claudebox/source/`
-- ✅ Create symlink at `~/.local/bin/claudebox`
-- ✅ Check for Docker (install if needed on first run)
-- ✅ Configure Docker for non-root usage (on first run)
+## Environment variables
 
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `ANTHROPIC_API_KEY` | Yes | - | Claude Code API access |
+| `ENABLE_METALS` | No | `true` | Start Metals MCP server on `/workspace` |
+| `METALS_PORT` | No | `7101` | Metals MCP HTTP listen port |
+| `ENABLE_KAPTURE` | No | `true` | Register Kapture MCP (requires `KAPTURE_PORT`) |
+| `KAPTURE_PORT` | No | - | Kapture SSE port on the host |
+| `GITHUB_TOKEN` | No | - | GitHub CLI authentication |
 
-## 📚 Usage
+## MCP servers
 
-### Basic Usage
+| Server | Transport | Where | Activation |
+|--------|-----------|-------|------------|
+| **metals-mcp** | HTTP (Streamable) | Inside container | Automatic on startup (port 7101) |
+| **kapture** | SSE | Host, bridged via `host.docker.internal` | Set `KAPTURE_PORT` env var |
+| **context7, serena, sequential-thinking** | stdio | Host `~/.claude.json` passthrough | Configure on host, claudebox passes through |
+
+## Building locally
 
 ```bash
-# Launch Claude Code CLI
-claudebox
+# Build the image
+bash scripts/build-scala.sh claudebox-scala:local
 
-# Pass arguments to Claude
-claudebox --model opus -c
-
-# Save your arguments so you don't need to type them every time
-claudebox --model opus -c
-
-# View the Claudebox info screen
-claudebox info
-
-# Get help
-claudebox --help        # Shows Claude help with ClaudeBox additions
+# Test it
+docker run -it --rm \
+  -v "$PWD:/workspace" \
+  -e ANTHROPIC_API_KEY \
+  claudebox-scala:local
 ```
 
-### Multi-Instance Support
+## Upstream claudebox documentation
 
-ClaudeBox supports running multiple instances in different projects simultaneously:
+This fork includes all upstream claudebox features. See below for the full upstream docs.
 
-```bash
-# Terminal 1 - Project A
-cd ~/projects/website
-claudebox
+---
 
-# Terminal 2 - Project B
-cd ~/projects/api
-claudebox shell
-
-# Terminal 3 - Project C
-cd ~/projects/ml-model
-claudebox profile python ml
-```
-
-Each project maintains its own:
-- Docker image (`claudebox-<project-name>`)
-- Language profiles and installed packages
-- Firewall allowlist
-- Python virtual environment
-- Memory and context (via MCP)
-- Claude configuration (`.claude.json`)
-
-### Development Profiles
-
-ClaudeBox includes 15+ pre-configured development environments:
-
-```bash
-# List all available profiles with descriptions
-claudebox profiles
-
-# Interactive profile management menu
-claudebox profile
-
-# Check current project's profiles
-claudebox profile status
-
-# Install specific profiles (project-specific)
-claudebox profile python ml       # Python + Machine Learning
-claudebox profile c openwrt       # C/C++ + OpenWRT
-claudebox profile rust go         # Rust + Go
-```
-
-#### Available Profiles:
-
-**Core Profiles:**
-- **core** - Core Development Utilities (compilers, VCS, shell tools)
-- **build-tools** - Build Tools (CMake, autotools, Ninja)
-- **shell** - Optional Shell Tools (fzf, SSH, man, rsync, file)
-- **networking** - Network Tools (IP stack, DNS, route tools)
-
-**Language Profiles:**
-- **c** - C/C++ Development (debuggers, analyzers, Boost, ncurses, cmocka)
-- **rust** - Rust Development (installed via rustup)
-- **python** - Python Development (managed via uv)
-- **go** - Go Development (installed from upstream archive)
-- **flutter** - Flutter Framework (installed using fvm, use FLUTTER_SDK_VERSION to set different version)
-- **javascript** - JavaScript/TypeScript (Node installed via nvm)
-- **java** - Java Development (Latest LTS via SDKMan, Maven, Gradle, Ant)
-- **ruby** - Ruby Development (gems, native deps, XML/YAML)
-- **php** - PHP Development (PHP + extensions + Composer)
-
-**Specialized Profiles:**
-- **openwrt** - OpenWRT Development (cross toolchain, QEMU, distro tools)
-- **database** - Database Tools (clients for major databases)
-- **devops** - DevOps Tools (Docker, Kubernetes, Terraform, etc.)
-- **web** - Web Dev Tools (nginx, HTTP test clients)
-- **embedded** - Embedded Dev (ARM toolchain, serial debuggers)
-- **datascience** - Data Science (Python, Jupyter, R)
-- **security** - Security Tools (scanners, crackers, packet tools)
-- **ml** - Machine Learning (build layer only; Python via uv)
+## claudebox features
 
 ### Default Flags Management
 
