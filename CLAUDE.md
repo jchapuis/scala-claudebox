@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Scala ClaudeBox Fork
+
+This is a fork of [RchGrav/claudebox](https://github.com/RchGrav/claudebox) adding:
+
+- **Scala profile** (`lib/config.sh` + `tooling/profiles/scala.sh`): JDK 21 (Temurin), sbt, Coursier, Metals, scalafmt, scalafix
+- **Metals MCP server**: Started inside the container at startup, registered with Claude Code
+- **Kapture MCP bridge**: SSE port forwarding from host Chrome extension into the container
+- **Host config passthrough**: Skills, commands, plugins, settings.json, config.json mounted from host
+
+### Quick Start
+```bash
+# Add scala profile to your project
+./main.sh add scala
+
+# With Kapture (auto-detect port) and Metals
+KAPTURE_PORT=$(scripts/kapture-detect.sh) ./main.sh
+
+# Override defaults
+ENABLE_METALS=false ENABLE_KAPTURE=false ./main.sh
+```
+
+### Key Files (Scala additions)
+- `lib/config.sh` - `get_profile_scala()` function + profile registration
+- `tooling/profiles/scala.sh` - Profile info script
+- `build/docker-entrypoint` - Metals MCP startup, Kapture SSE bridge, host config symlinks
+- `lib/docker.sh` - Mount host skills/commands/plugins/settings, pass env vars, host.docker.internal
+- `scripts/kapture-detect.sh` - Auto-detect Kapture SSE port on host
+
+---
+
 You are a Senior Bash/Docker Engineer with deep expertise in shell scripting and containerization. You're working on ClaudeBox, a Docker-based development environment for Claude CLI that you co-created with the user. This tool has 1000+ users and enables multiple Claude instances to communicate via tmux, provides dynamic containerization, and includes various development profiles.
 
 ## Critical Requirements

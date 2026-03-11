@@ -26,6 +26,7 @@ get_profile_packages() {
         flutter) echo "" ;;  # Installed from source
         javascript) echo "" ;;  # Installed via nvm
         java) echo "" ;;  # Java installed via SDKMan, build tools in profile function
+        scala) echo "" ;;  # Scala installed via Coursier + sbt apt repo
         ruby) echo "ruby-full ruby-dev libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt1-dev libcurl4-openssl-dev software-properties-common" ;;
         php) echo "php php-cli php-fpm php-mysql php-pgsql php-sqlite3 php-curl php-gd php-mbstring php-xml php-zip composer" ;;
         database) echo "postgresql-client mysql-client sqlite3 redis-tools mongodb-clients" ;;
@@ -53,6 +54,7 @@ get_profile_description() {
         flutter) echo "Flutter Development (installed from fvm)" ;;
         javascript) echo "JavaScript/TypeScript (Node installed via nvm)" ;;
         java) echo "Java Development (latest LTS, Maven, Gradle, Ant via SDKMan)" ;;
+        scala) echo "Scala Development (JDK 21, sbt, Coursier, Metals, scalafmt, scalafix)" ;;
         ruby) echo "Ruby Development (gems, native deps, XML/YAML)" ;;
         php) echo "PHP Development (PHP + extensions + Composer)" ;;
         database) echo "Database Tools (clients for major databases)" ;;
@@ -67,7 +69,7 @@ get_profile_description() {
 }
 
 get_all_profile_names() {
-    echo "core build-tools shell networking c openwrt rust python go flutter javascript java ruby php database devops web embedded datascience security ml"
+    echo "core build-tools shell networking c openwrt rust python go flutter javascript java scala ruby php database devops web embedded datascience security ml"
 }
 
 profile_exists() {
@@ -83,6 +85,7 @@ expand_profile() {
         c) echo "core build-tools c" ;;
         openwrt) echo "core build-tools openwrt" ;;
         ml) echo "core build-tools ml" ;;
+        scala) echo "core scala" ;;  # scala profile includes its own JDK 21
         rust|go|flutter|python|php|ruby|java|database|devops|web|embedded|datascience|security|javascript)
             echo "core $1"
             ;;
@@ -360,6 +363,58 @@ get_profile_security() {
     fi
 }
 
+get_profile_scala() {
+    cat << 'SCALA_EOF'
+# --- Scala profile: JDK 21 + sbt + Coursier + Metals/scalafmt/scalafix ---
+USER root
+
+# JDK 21 via Eclipse Temurin
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gnupg && \
+    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
+      | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/adoptium.gpg] \
+      https://packages.adoptium.net/artifactory/deb bookworm main" \
+      > /etc/apt/sources.list.d/adoptium.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends temurin-21-jdk && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# sbt
+RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" \
+      | gpg --dearmor -o /usr/share/keyrings/sbt-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/sbt-archive-keyring.gpg] \
+      https://repo.scala-sbt.org/scalasbt/debian all main" \
+      > /etc/apt/sources.list.d/sbt.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends sbt && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Coursier + Scala CLI tools (as claude user)
+USER claude
+RUN curl -fL https://github.com/coursier/coursier/releases/latest/download/cs-$(uname -m)-pc-linux.gz \
+      | gzip -d > /tmp/cs && chmod +x /tmp/cs && \
+    /tmp/cs setup --yes --install-dir "$HOME/.local/share/coursier/bin" \
+      --apps metals,scalafmt,scalafix 2>/dev/null && \
+    rm -f /tmp/cs
+
+# sbt warmup: pre-download launcher + Scala 3 compiler
+RUN mkdir -p /tmp/sbt-warmup/project /tmp/sbt-warmup/src/main/scala && \
+    echo 'scalaVersion := "3.6.4"' > /tmp/sbt-warmup/build.sbt && \
+    echo 'sbt.version=1.10.7' > /tmp/sbt-warmup/project/build.properties && \
+    echo 'object Warmup' > /tmp/sbt-warmup/src/main/scala/Warmup.scala && \
+    cd /tmp/sbt-warmup && sbt compile </dev/null && \
+    cd / && rm -rf /tmp/sbt-warmup
+
+USER root
+
+# Set JAVA_HOME (must use RUN since ENV can't execute commands)
+RUN echo "export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-$(dpkg --print-architecture)" >> /etc/profile.d/java.sh && \
+    echo "export PATH=/home/claude/.local/share/coursier/bin:\$PATH" >> /etc/profile.d/coursier.sh
+ENV PATH="/home/claude/.local/share/coursier/bin:$PATH"
+SCALA_EOF
+}
+
 get_profile_ml() {
     # ML profile just needs build tools which are dependencies
     echo "# ML profile uses build-tools for compilation"
@@ -368,6 +423,6 @@ get_profile_ml() {
 export -f _read_ini get_profile_packages get_profile_description get_all_profile_names profile_exists expand_profile
 export -f get_profile_file_path read_config_value read_profile_section update_profile_section get_current_profiles
 export -f get_profile_core get_profile_build_tools get_profile_shell get_profile_networking get_profile_c get_profile_openwrt
-export -f get_profile_rust get_profile_python get_profile_go get_profile_flutter get_profile_javascript get_profile_java get_profile_ruby
+export -f get_profile_rust get_profile_python get_profile_go get_profile_flutter get_profile_javascript get_profile_java get_profile_scala get_profile_ruby
 export -f get_profile_php get_profile_database get_profile_devops get_profile_web get_profile_embedded get_profile_datascience
 export -f get_profile_security get_profile_ml

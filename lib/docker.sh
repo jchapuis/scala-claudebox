@@ -241,6 +241,33 @@ run_claudebox_container() {
     
     # Mount SSH directory
     docker_args+=(-v "$HOME/.ssh":"/home/$DOCKER_USER/.ssh:ro")
+
+    # Mount host Claude Code skills, commands, plugins (read-only)
+    if [[ -d "$HOME/.claude/skills" ]]; then
+        docker_args+=(-v "$HOME/.claude/skills:/home/$DOCKER_USER/.claudebox/skills:ro")
+    fi
+    if [[ -d "$HOME/.claude/commands" ]]; then
+        docker_args+=(-v "$HOME/.claude/commands:/home/$DOCKER_USER/.claudebox/commands:ro")
+    fi
+    if [[ -d "$HOME/.claude/plugins" ]]; then
+        docker_args+=(-v "$HOME/.claude/plugins:/home/$DOCKER_USER/.claudebox/plugins:ro")
+    fi
+    # Mount host settings and config for permissions/model preferences
+    if [[ -f "$HOME/.claude/settings.json" ]]; then
+        docker_args+=(-v "$HOME/.claude/settings.json:/home/$DOCKER_USER/.claudebox/host-settings.json:ro")
+    fi
+    if [[ -f "$HOME/.claude/config.json" ]]; then
+        docker_args+=(-v "$HOME/.claude/config.json:/home/$DOCKER_USER/.claudebox/host-config.json:ro")
+    fi
+
+    # Pass Kapture and Metals environment variables
+    [[ -n "${KAPTURE_PORT:-}" ]] && docker_args+=(-e "KAPTURE_PORT=$KAPTURE_PORT")
+    [[ -n "${METALS_PORT:-}" ]] && docker_args+=(-e "METALS_PORT=$METALS_PORT")
+    [[ -n "${ENABLE_METALS:-}" ]] && docker_args+=(-e "ENABLE_METALS=$ENABLE_METALS")
+    [[ -n "${ENABLE_KAPTURE:-}" ]] && docker_args+=(-e "ENABLE_KAPTURE=$ENABLE_KAPTURE")
+
+    # Add host.docker.internal for MCP server bridging (Linux)
+    docker_args+=(--add-host=host.docker.internal:host-gateway)
     
     # Mount .env file if it exists in the project directory
     if [[ -f "$PROJECT_DIR/.env" ]]; then
