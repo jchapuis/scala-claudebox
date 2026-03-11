@@ -61,8 +61,13 @@ RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64
 
 # Coursier + Scala CLI tools (as claude user)
 USER claude
-RUN curl -fL https://github.com/coursier/coursier/releases/latest/download/cs-$(uname -m)-pc-linux.gz \
-      | gzip -d > /tmp/cs && chmod +x /tmp/cs && \
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+      curl -fL "https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz" \
+        | gzip -d > /tmp/cs && chmod +x /tmp/cs; \
+    else \
+      curl -fL "https://github.com/coursier/coursier/releases/latest/download/coursier" -o /tmp/cs && chmod +x /tmp/cs; \
+    fi && \
     /tmp/cs setup --yes --install-dir "$HOME/.local/share/coursier/bin" \
       --apps metals,scalafmt,scalafix 2>/dev/null && \
     rm -f /tmp/cs
